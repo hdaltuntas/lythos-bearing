@@ -1,0 +1,81 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lythosbearing"
+version = "0.1.0"
+description = "Bearing capacity of shallow foundations: the general bearing capacity equation with the factors of Terzaghi, Meyerhof, Hansen, Vesić, EN 1997-1 and Skempton, eccentric and inclined loading, layered and two-layer ground, SPT / CPT / pressuremeter and rock methods, seismic loading, and parametric / reliability studies with PDF reporting."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Hasan Deniz Altuntaş", email = "lythosfea@gmail.com" }]
+keywords = [
+    "geotechnical", "bearing capacity", "foundation", "shallow foundation", "footing",
+    "terzaghi", "meyerhof", "vesic", "hansen", "skempton", "eurocode 7", "hoek-brown",
+    "punching shear", "reliability", "monte carlo", "civil engineering",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Web Environment",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Education",
+    "Natural Language :: English",
+    "Natural Language :: Turkish",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Visualization",
+]
+# The program's output is drawings and reports — the section, the factor
+# curves, the comparison, PDFs — so the plotting and reporting libraries are
+# required, not optional. The interface itself needs nothing beyond the
+# standard library.
+dependencies = [
+    "numpy>=1.24",
+    "matplotlib>=3.7",
+    "reportlab>=4.0",
+]
+
+[project.optional-dependencies]
+# Word reports, and the spreadsheet export of a study; both formats are offered
+# by the interface, and each needs its package.
+docx = ["python-docx>=0.8"]
+xlsx = ["openpyxl>=3.0"]
+dev = [
+    "pytest>=7.0", "ruff>=0.4", "build>=1.0", "twine>=5.0",
+    "python-docx>=0.8", "openpyxl>=3.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/hdaltuntas/lythos-bearing"
+Repository = "https://github.com/hdaltuntas/lythos-bearing"
+Issues = "https://github.com/hdaltuntas/lythos-bearing/issues"
+Releasing = "https://github.com/hdaltuntas/lythos-bearing/blob/main/docs/releasing.md"
+
+[project.scripts]
+lythos-bearing = "lythosbearing.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["lythosbearing*"]
+
+[tool.setuptools.package-data]
+"lythosbearing.web" = ["static/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+
+# The rule set is named rather than left to the default, which changes with the
+# linter's version: what passes here should keep passing after an upgrade.
+# It is the rules that catch mistakes — undefined names, unused imports, import
+# order, stray whitespace.
+[tool.ruff.lint]
+select = ["E4", "E9", "F", "I", "W"]
