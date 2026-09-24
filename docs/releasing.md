@@ -15,6 +15,14 @@ the file to rehearse.
 Nothing is sent before it has printed what it is about to upload and you have
 answered `yes`.
 
+When it needs the token it opens a small window: paste the token there
+(Ctrl+V; it shows as dots) and press **Upload**. If the window is hidden, look
+behind the editor or on the taskbar. It takes the token without asking when
+the environment variable `PYPI_TOKEN` holds it, or when `~/.pypirc` does (it
+offers to save it there after the first upload). Editors have no real console,
+and Python's hidden input would wait there for ever, so the token is never
+asked for that way outside a terminal.
+
 ## Once, before the first upload
 
 Get an API token from <https://pypi.org/manage/account/token/>. Until the

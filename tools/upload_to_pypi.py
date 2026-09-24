@@ -15,7 +15,7 @@ What it does, in order:
     3. compares the version in pyproject.toml with the version of the files
     4. checks whether that version is already published on PyPI
     5. runs `twine check` over the files
-    6. asks for an API token, unless ~/.pypirc already holds one
+    6. finds the API token (see below), or asks for it in a small window
     7. shows what it is about to upload, asks you to confirm, then uploads
 
 Nothing is sent anywhere before step 5, and any answer other than "yes" stops it.
@@ -23,7 +23,20 @@ Nothing is sent anywhere before step 5, and any answer other than "yes" stops it
 PyPI accepts a version number once and never again. Read what steps 3 and 4
 print before you confirm.
 
-The token is not stored by this script, not printed and not logged; it is
+The token is looked for in this order:
+
+    · the environment variable PYPI_TOKEN (or TWINE_PASSWORD)
+    · ~/.pypirc, if an earlier run saved it there
+    · otherwise a small window opens with a field to paste it into (Ctrl+V);
+      what is pasted is shown as dots. Without a desktop the shell asks
+      instead.
+
+Editors such as Thonny and IDLE have no real console, and Python's hidden
+input (getpass) waits there for a keyboard it never reads from — the program
+looks frozen. That is why the token is asked for in a window, and never with
+getpass outside a real terminal.
+
+The token is not stored unless you say so, not printed and not logged; it is
 passed to twine as an environment variable.
 """
 
@@ -34,6 +47,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import urllib.error
 import urllib.request
 import venv
@@ -236,8 +250,98 @@ def stored_token():
     return None
 
 
+def token_from_environment():
+    """A token handed over in an environment variable, if there is one."""
+    for name in ("PYPI_TOKEN", "TWINE_PASSWORD"):
+        value = os.environ.get(name, "").strip()
+        if value:
+            return name, value
+    return None, None
+
+
+def real_terminal():
+    """True in a real console; False in an editor's shell (Thonny, IDLE)."""
+    try:
+        return sys.stdin is not None and sys.stdin.isatty() and "idlelib" not in sys.modules
+    except (AttributeError, ValueError):
+        return False
+
+
+def ask_in_window():
+    """A small window with a hidden field to paste the token into.
+
+    Returns the token, "" if the window was closed or cancelled, or None when
+    no window can be shown (no tkinter, no desktop).
+    """
+    try:
+        import tkinter as tk
+    except ImportError:
+        return None
+    try:
+        root = tk.Tk()
+    except Exception:                       # no display
+        return None
+
+    result = {"token": ""}
+    root.title("PyPI token")
+    root.resizable(False, False)
+    root.attributes("-topmost", True)       # in front of the editor
+
+    frame = tk.Frame(root, padx=16, pady=14)
+    frame.pack()
+    tk.Label(frame, justify="left",
+             text=f"Paste the API token (Ctrl+V) and press Upload.\n"
+                  f"It starts with 'pypi-'. Get one at {TOKEN_PAGE}").pack(anchor="w")
+    entry = tk.Entry(frame, width=58, show="•")
+    entry.pack(fill="x", pady=(10, 4))
+
+    shown = tk.BooleanVar(value=False)
+    tk.Checkbutton(frame, text="Show what I pasted", variable=shown,
+                   command=lambda: entry.config(show="" if shown.get() else "•")
+                   ).pack(anchor="w")
+
+    def accept(_event=None):
+        result["token"] = entry.get().strip()
+        root.destroy()
+
+    def cancel(_event=None):
+        result["token"] = ""
+        root.destroy()
+
+    buttons = tk.Frame(frame)
+    buttons.pack(anchor="e", pady=(10, 0))
+    tk.Button(buttons, text="Cancel", width=10, command=cancel).pack(side="right")
+    tk.Button(buttons, text="Upload", width=10, command=accept).pack(side="right", padx=6)
+    root.bind("<Return>", accept)
+    root.bind("<Escape>", cancel)
+    root.protocol("WM_DELETE_WINDOW", cancel)
+
+    root.update_idletasks()
+    x = (root.winfo_screenwidth() - root.winfo_reqwidth()) // 2
+    y = (root.winfo_screenheight() - root.winfo_reqheight()) // 3
+    root.geometry(f"+{x}+{y}")
+    root.lift()
+    root.focus_force()
+    entry.focus_set()
+    root.mainloop()
+    return result["token"]
+
+
+def ask_in_shell():
+    """The token typed into the shell: hidden in a real console, visible in an
+    editor, where hidden input would hang."""
+    if real_terminal():
+        return getpass.getpass("Token (what you type stays hidden): ").strip()
+    print("(This shell has no hidden input: the token will be visible as you paste it.)")
+    return ask("Token")
+
+
 def get_token():
     """Finds the token, or asks for it. Returns (token, is new)."""
+    variable, token = token_from_environment()
+    if token:
+        print(f"Using the token in the environment variable {variable}.\n")
+        return token, False
     token = stored_token()
     if token:
         print(f"Using the token in {PYPIRC}.\n")
@@ -247,18 +351,21 @@ def get_token():
     print("  · it starts with 'pypi-' and is shown only once")
     print("  · for a project's first upload the scope must be the entire account")
     print("  · once the project is published, replace it with a project token\n")
-    try:
-        token = getpass.getpass("Token (what you type stays hidden): ").strip()
-    except Exception:
-        # Some editors' shells have no hidden input.
-        print("(No hidden input in this shell — the token you type will be visible.)")
-        token = ask("Token")
+    print("Opening a small window: paste the token there (Ctrl+V) and press Upload.")
+    print("If you cannot see it, look behind the editor or on the taskbar.\n")
+
+    token = ask_in_window()
+    if token is None:                       # no window could be shown
+        print("(No window could be opened; the token is asked for here instead.)")
+        token = ask_in_shell()
+    token = token.strip()
     if not token:
-        stop("No token, no upload.")
+        stop("No token, no upload. Nothing was sent.")
     if not token.startswith("pypi-"):
         print("\nThat does not look like a token — tokens start with 'pypi-'.")
         if not yes("Use it anyway?"):
-            stop("Stopped.")
+            stop("Stopped. Nothing was sent.")
+    print("Token received.")
     return token, True
 
 
