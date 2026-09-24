@@ -66,8 +66,49 @@ SITE = "https://test.pypi.org" if TEST_PYPI else "https://pypi.org"
 TOKEN_PAGE = f"{SITE}/manage/account/token/"
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.normpath(os.path.join(HERE, ".."))
-DIST = os.path.join(ROOT, "dist")
+
+
+def _is_project(folder):
+    """True if the folder holds this project's pyproject.toml."""
+    try:
+        with open(os.path.join(folder, "pyproject.toml"), encoding="utf-8") as fh:
+            text = fh.read()
+    except OSError:
+        return False
+    return re.search(rf'^name\s*=\s*"{PROJECT}"', text, re.MULTILINE) is not None
+
+
+def find_project():
+    """The project's source folder: the one above tools/ in a clone, or the
+    folder the script or the shell is in. None when the script was copied
+    somewhere on its own — then it can upload, but not build."""
+    for folder in (os.path.join(HERE, ".."), HERE, os.getcwd(),
+                   os.path.join(os.getcwd(), "..")):
+        folder = os.path.normpath(folder)
+        if _is_project(folder):
+            return folder
+    return None
+
+
+ROOT = find_project()
+
+
+def find_dist():
+    """The folder holding this project's .whl / .tar.gz files.
+
+    In a clone that is the project's dist/. A copy of this script on its own
+    also finds a dist/ folder beside itself (or in the shell's folder), or the
+    files lying right next to it.
+    """
+    candidates = []
+    if ROOT:
+        candidates.append(os.path.join(ROOT, "dist"))
+    candidates += [os.path.join(HERE, "dist"), HERE,
+                   os.path.join(os.getcwd(), "dist")]
+    for folder in candidates:
+        if releases_in(os.path.normpath(folder)):
+            return os.path.normpath(folder)
+    return os.path.join(ROOT, "dist") if ROOT else os.path.join(HERE, "dist")
 
 # Package name and version, from a distribution file name.
 FILENAME = re.compile(r"^(?P<name>[A-Za-z0-9_.-]+?)-(?P<version>\d[^-]*?)"
@@ -124,6 +165,8 @@ def prepare_environment(need_build):
 # --------------------------------------------------------------------- version
 def declared_version():
     """The version written in pyproject.toml."""
+    if not ROOT:
+        return None
     path = os.path.join(ROOT, "pyproject.toml")
     try:
         with open(path, encoding="utf-8") as fh:
@@ -156,35 +199,49 @@ def releases_in(folder):
         return found
     for entry in sorted(os.listdir(folder)):
         match = FILENAME.match(entry)
-        if match:
+        # a dist/ folder shared with other packages must never upload them
+        if match and match.group("name").lower().replace("-", "_") == PROJECT:
             key = (match.group("name"), match.group("version"))
             found.setdefault(key, []).append(os.path.join(folder, entry))
     return found
 
 
 def build_distribution():
-    """Cleans dist/ and builds it again."""
-    if os.path.isdir(DIST):
-        print(f"Cleaning {DIST} ...")
-        shutil.rmtree(DIST)
+    """Cleans the project's dist/ and builds it again."""
+    if not ROOT:
+        stop(f"There is no {PROJECT} source here to build from: this script was\n"
+             f"copied on its own ({HERE}).\n"
+             f"Either put the dist folder with the .whl and .tar.gz next to this\n"
+             f"script and answer 'no' to rebuilding, or run the copy in the tools\n"
+             f"folder of a clone of the repository.")
+    prepare_environment(need_build=True)    # build may not be installed yet
+    dist = os.path.join(ROOT, "dist")
+    if os.path.isdir(dist):
+        print(f"Cleaning {dist} ...")
+        shutil.rmtree(dist)
     print("Building the distribution ...\n")
     run([tool("python"), "-m", "build"], "The build failed", cwd=ROOT)
     print()
 
 
 def choose_files():
-    found = releases_in(DIST)
+    dist = find_dist()
+    found = releases_in(dist)
     if not found:
-        print(f"There is no .whl or .tar.gz in {DIST}.")
+        print(f"There is no {PROJECT} .whl or .tar.gz in {dist}.")
+        if not ROOT:
+            stop(f"Put the dist folder (or the two files) next to this script,\n"
+                 f"in {HERE}, and run it again.")
         if not yes("Shall I build it now?", "yes"):
             stop("There is nothing to upload.")
         build_distribution()
-        found = releases_in(DIST)
+        dist = find_dist()
+        found = releases_in(dist)
         if not found:
             stop("The build produced nothing.")
 
     keys = sorted(found)
-    print(f"Found in {DIST}:")
+    print(f"Found in {dist}:")
     for index, (name, version) in enumerate(keys, start=1):
         files = ", ".join(os.path.basename(f) for f in found[(name, version)])
         print(f"  {index}. {name} {version} — {files}")
@@ -415,7 +472,12 @@ def main():
              if TEST_PYPI else "PyPI (the real one)")
     print(f"Target: {where}\n")
 
-    rebuild = yes("Rebuild the distribution?", "yes")
+    if ROOT:
+        print(f"Project: {ROOT}\n")
+        rebuild = yes("Rebuild the distribution?", "yes")
+    else:
+        print(f"No {PROJECT} source here; the files already built will be uploaded.\n")
+        rebuild = False
     prepare_environment(need_build=rebuild)
     if rebuild:
         build_distribution()
