@@ -3,6 +3,8 @@
 # Lythos Bearing
 
 [![Tests](https://github.com/hdaltuntas/lythos-bearing/actions/workflows/tests.yml/badge.svg)](https://github.com/hdaltuntas/lythos-bearing/actions/workflows/tests.yml)
+[![PyPI](https://img.shields.io/pypi/v/lythosbearing)](https://pypi.org/project/lythosbearing/)
+[![Python](https://img.shields.io/pypi/pyversions/lythosbearing)](https://pypi.org/project/lythosbearing/)
 
 Tarayıcıdan sürülen, sığ temellerin taşıma gücü hesabı. Tabakalı bir zemin profili üzerindeki
 dikdörtgen, kare, şerit ya da dairesel bir temel; düşey yük, yatay yükler ve momentler altında,
@@ -52,20 +54,25 @@ bağımlılık getirmez.
 
 ## Kurulum ve çalıştırma
 
+[PyPI](https://pypi.org/project/lythosbearing/) üzerinden:
+
+```bash
+pip install lythosbearing
+lythos-bearing                     # arayüzü tarayıcıda açar
+```
+
+Word raporu için `python-docx`, çalışmanın Excel çıktısı için `openpyxl` gerekir; ikisi de
+isteğe bağlıdır: `pip install "lythosbearing[docx,xlsx]"`. Python 3.10+ gerekir.
+
+Depo kopyasından, yalnızca bilimsel kütüphanelerle:
+
 ```bash
 pip install numpy matplotlib reportlab
 python main.py
 ```
 
-ya da kurup komutla:
-
-```bash
-pip install .
-lythos-bearing                     # arayüzü tarayıcıda açar
-```
-
-Python 3.10+ gerekir. Word raporu için `python-docx`, çalışmanın Excel çıktısı için
-`openpyxl` gerekir (`pip install ".[docx,xlsx]"`).
+ya da kopyanın kendisini `pip install .` ile kurarak (ek paketlerle:
+`pip install ".[docx,xlsx]"`).
 
 ## Komut satırı
 

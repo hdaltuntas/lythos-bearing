@@ -3,6 +3,8 @@
 # Lythos Bearing
 
 [![Tests](https://github.com/hdaltuntas/lythos-bearing/actions/workflows/tests.yml/badge.svg)](https://github.com/hdaltuntas/lythos-bearing/actions/workflows/tests.yml)
+[![PyPI](https://img.shields.io/pypi/v/lythosbearing)](https://pypi.org/project/lythosbearing/)
+[![Python](https://img.shields.io/pypi/pyversions/lythosbearing)](https://pypi.org/project/lythosbearing/)
 
 Bearing capacity of shallow foundations, driven from your browser. A rectangular, square,
 strip or circular footing on a layered soil profile, under a vertical load, horizontal loads
@@ -62,6 +64,16 @@ standard library.
 
 ## Install & run
 
+From [PyPI](https://pypi.org/project/lythosbearing/):
+
+```bash
+pip install lythosbearing
+lythos-bearing                     # opens the interface in your browser
+```
+
+Word reports need `python-docx` and the spreadsheet export of a study needs `openpyxl`;
+both are extras: `pip install "lythosbearing[docx,xlsx]"`. Python 3.10+ is required.
+
 From a clone, with nothing installed but the scientific stack:
 
 ```bash
@@ -69,18 +81,9 @@ pip install numpy matplotlib reportlab
 python main.py
 ```
 
-or install it and use the command:
-
-```bash
-pip install .
-lythos-bearing                     # opens the interface in your browser
-```
-
+or install the clone itself with `pip install .` (extras: `pip install ".[docx,xlsx]"`).
 `main.py` puts its own directory first on the import path, so the clone's code is what
 runs even when `lythosbearing` is also installed.
-
-Python 3.10+ is required. Word reports need `python-docx` and the spreadsheet export of a
-study needs `openpyxl`; both are extras (`pip install ".[docx,xlsx]"`).
 
 ## Command line
 
