@@ -34,3 +34,8 @@ Thumbs.db
 
 # local project files created while testing
 *.bearing
+
+# C# project artifacts
+lythosbearing-csharp/**/bin/
+lythosbearing-csharp/**/obj/
+lythosbearing-csharp/**/TestResults/
